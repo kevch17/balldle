@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BALLDLE — prototype</title>
+<style>
+  :root{
+    --bg:#0a0e13; --panel:#121a24; --panel2:#0e151d; --line:#233043;
+    --ink:#e8eef6; --muted:#8ea3bd; --dim:#5d738f;
+    --strike:#f59e0b; --ball:#38bdf8;
+    --good:#22c55e; --bad:#ef4444; --warn:#eab308;
+    --abs:#22d3ee; --rule:#94a3b8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex;justify-content:center;padding:18px 14px 60px}
+  .wrap{width:100%;max-width:660px}
+
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:6px}
+  h1{font-size:26px;letter-spacing:.22em;margin:0;font-weight:800}
+  h1 span{color:var(--abs)}
+  .tag{font-size:11px;color:var(--dim);letter-spacing:.14em;text-transform:uppercase}
+
+  .hud{display:flex;gap:8px;margin:12px 0 10px}
+  .hud div{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:8px 10px;text-align:center}
+  .hud b{display:block;font-size:20px;font-variant-numeric:tabular-nums;line-height:1.2}
+  .hud small{font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+
+  .scene{background:var(--panel2);border:1px solid var(--line);border-radius:14px;overflow:hidden;
+    position:relative}
+  svg{display:block;width:100%;height:auto}
+  .banner{position:absolute;top:8px;left:8px;background:rgba(234,179,8,.14);
+    border:1px solid rgba(234,179,8,.4);color:#fde047;font-size:10px;letter-spacing:.1em;
+    text-transform:uppercase;padding:3px 8px;border-radius:6px}
+
+  .prompt{text-align:center;color:var(--muted);font-size:13px;min-height:20px;margin:14px 0 8px}
+
+  .calls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  button{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);
+    border-radius:11px;padding:14px;cursor:pointer;font-weight:700;letter-spacing:.06em;
+    transition:transform .06s,border-color .12s,background .12s}
+  button:hover:not(:disabled){border-color:#3a4d68;background:#17212e}
+  button:active:not(:disabled){transform:translateY(1px)}
+  button:disabled{opacity:.35;cursor:default}
+  .btn-ball{border-color:#1e4d68} .btn-ball:hover:not(:disabled){border-color:var(--ball)}
+  .btn-strike{border-color:#6b4a13} .btn-strike:hover:not(:disabled){border-color:var(--strike)}
+  .btn-ball b{color:var(--ball)} .btn-strike b{color:var(--strike)}
+  button b{display:block;font-size:19px;letter-spacing:.1em}
+  button small{display:block;font-size:10px;color:var(--dim);font-weight:500;letter-spacing:.08em;margin-top:2px}
+  .ghost{background:transparent;border-color:var(--line);color:var(--muted);font-weight:600;
+    padding:9px 14px;font-size:13px;letter-spacing:.04em}
+
+  .types{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .types button{padding:11px 6px;font-size:13px;font-weight:600;letter-spacing:0}
+  .types button.sel{border-color:var(--abs);background:#0f2b33}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:16px;margin-top:12px}
+  .verdicts{display:grid;gap:8px}
+  .v{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;
+    background:var(--panel2);border:1px solid var(--line)}
+  .v .who{font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);
+    width:112px;flex:none;line-height:1.3}
+  .v .call{font-weight:800;letter-spacing:.08em;width:66px;flex:none}
+  .v .note{font-size:12px;color:var(--muted);flex:1;text-align:right}
+  .v.ok{border-color:rgba(34,197,94,.45)} .v.no{border-color:rgba(239,68,68,.4)}
+  .pill{font-size:10px;font-weight:700;letter-spacing:.08em;padding:2px 7px;border-radius:999px}
+  .pill.ok{background:rgba(34,197,94,.16);color:#4ade80}
+  .pill.no{background:rgba(239,68,68,.16);color:#f87171}
+
+  .close{margin:14px 0 4px}
+  .close .lab{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);
+    letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+  .meter{height:8px;border-radius:99px;background:#1b2637;overflow:hidden;position:relative}
+  .meter i{position:absolute;top:0;bottom:0;left:50%;width:2px;background:#3d4f68}
+  .meter u{position:absolute;top:0;bottom:0;width:8px;border-radius:99px;transform:translateX(-4px)}
+
+  .ctx{margin-top:14px;border-top:1px solid var(--line);padding-top:13px}
+  .ctx h3{margin:0 0 3px;font-size:14px;font-weight:700}
+  .ctx .sub{font-size:12px;color:var(--muted);margin-bottom:10px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(122px,1fr));gap:8px;margin-bottom:11px}
+  .grid div{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 8px}
+  .grid small{display:block;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+  .grid b{font-size:13px;font-variant-numeric:tabular-nums;display:block;line-height:1.35}
+  .grid small+b{margin-top:1px}
+  .result{background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--abs);
+    border-radius:8px;padding:10px 12px}
+  .result small{display:block;font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--dim);margin-bottom:3px}
+  .result b{font-size:13px} .result p{margin:4px 0 0;font-size:12.5px;color:var(--muted)}
+
+  .savant{display:inline-flex;align-items:center;gap:6px;margin-top:11px;font-size:12px;
+    text-decoration:none;padding:7px 11px;border-radius:8px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--abs);font-weight:600}
+  .savant:hover{border-color:var(--abs);background:#0f2b33}
+  .savant.off{color:var(--dim);font-weight:400;cursor:default;display:block;line-height:1.5}
+  .share{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:20px;letter-spacing:3px;
+    line-height:1.5;text-align:center;margin:10px 0}
+  .legend{font-size:11px;color:var(--dim);text-align:center;margin-top:8px}
+  .foot{font-size:11px;color:var(--dim);margin-top:18px;line-height:1.7}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>BALL<span>DLE</span></h1>
+    <div class="tag">prototype · 10 pitches</div>
+  </header>
+
+  <div class="hud">
+    <div><b id="hudPitch">1<small style="display:inline;font-size:12px;color:var(--dim)">/10</small></b><small>Pitch</small></div>
+    <div><b id="hudScore">0</b><small>Score</small></div>
+    <div><b id="hudAbs">0</b><small>vs ABS</small></div>
+    <div><b id="hudUmp">0</b><small>vs Ump</small></div>
+  </div>
+
+  <div class="scene">
+    <div class="banner" id="banner">Sample data — not real games</div>
+    <svg id="svg" viewBox="0 0 640 560" aria-label="Pitch from the umpire's point of view"></svg>
+  </div>
+
+  <p class="prompt" id="prompt">Tap anywhere or press <b>Space</b> to see the pitch.</p>
+
+  <div id="stage"></div>
+
+  <p class="foot" id="foot">
+    Zones: <b style="color:var(--abs)">ABS</b> — 17&Prime; wide, top 53.5% / bottom 27% of batter height, judged
+    at the midpoint of the plate. <b style="color:var(--rule)">Rulebook</b> (dashed) — plate width plus a ball's
+    radius, with Statcast's stance-based top and bottom. The umpire is a human working the second zone;
+    ABS is the first. They disagree, and that gap is the game.
+  </p>
+</div>
+
+<script>
+/* ------------------------------------------------------------------ data -- */
+const PITCHES = __PITCHES__;
+
+/* Per-pitch-type defaults, used ONLY when the real Statcast column is absent.
+   These are in Statcast's own conventions, quoted for a right-hander:
+     axis     spin_axis in degrees; 180 = pure backspin, 0 = pure topspin
+     pfx_arm  horizontal movement in feet, POSITIVE = toward the pitcher's ARM side
+     pfx_z    vertical movement in feet vs a spinless ball; positive = rides
+     gyro     share of the spin pointing at you (the slider's "dot"); no Statcast
+              column carries this, so it stays a per-type constant either way
+   Arm side vs glove side, settled once: a right-hander faces home, so his throwing
+   hand is on the third-base side, which is NEGATIVE plate_x and screen-LEFT to us.
+   Sinkers and changeups run arm-side; sliders, cutters and curveballs break
+   glove-side. From the batter's point of view every one of those is reversed. */
+const PITCH_FX = {
+  FF: {gyro:0.05, rpm:2320, axis:205, pfx_arm: 0.60, pfx_z: 1.35},
+  SI: {gyro:0.12, rpm:2180, axis:232, pfx_arm: 1.40, pfx_z: 0.60},
+  FC: {gyro:0.45, rpm:2480, axis:152, pfx_arm:-0.20, pfx_z: 0.60},
+  SL: {gyro:0.85, rpm:2600, axis:118, pfx_arm:-1.05, pfx_z: 0.05},
+  CU: {gyro:0.15, rpm:2760, axis: 42, pfx_arm:-0.65, pfx_z:-0.90},
+  CH: {gyro:0.08, rpm:1800, axis:224, pfx_arm: 1.25, pfx_z: 0.45},
+};
+const fx = t => PITCH_FX[t] || PITCH_FX.FF;
+
+/* The two seams, authored just inside the ball's edge. Rather than transforming the
+   group — which stretches the stroke along with it — the control points themselves
+   get rotated and squashed, so the seam keeps an even width at every orientation. */
+const SEAM = [
+  [[-6.01,-7.35],[-1.79,-2.96],[-1.79, 2.96],[-6.01, 7.35]],
+  [[ 6.01,-7.35],[ 1.79,-2.96],[ 1.79, 2.96],[ 6.01, 7.35]],
+];
+function spinSeams(psi, tilt, sq){
+  const R = d => d*Math.PI/180, A = R(psi+tilt), B = R(-tilt);
+  const ca=Math.cos(A), sa=Math.sin(A), cb=Math.cos(B), sb=Math.sin(B);
+  const tf = ([x,y]) => {                       // R(psi+tilt) . scale(1,sq) . R(-tilt)
+    const X = cb*x - sb*y, Y = (sb*x + cb*y) * sq;
+    return [ca*X - sa*Y, sa*X + ca*Y];
+  };
+  SEAM.forEach((pts, n) => {
+    const q = pts.map(tf).map(p => `${p[0].toFixed(2)} ${p[1].toFixed(2)}`);
+    $("seam"+n).setAttribute("d", `M${q[0]} C${q[1]} ${q[2]} ${q[3]}`);
+  });
+}
+
+const G = 32.174;          // ft/s^2
+const BREAK_GAIN = 2.2;    // on-screen exaggeration of movement; set 1.0 for true scale
+const SPIN_VIS   = 0.13;   // share of true rpm actually drawn, so spin reads instead of blurs
+const MOUND_PPF  = 7.4;    // pixels per foot out at the rubber (matches the drawn pitcher)
+const MOUND_GY   = 232;    // ground line at the rubber
+const num = (v, d) => Number.isFinite(v) ? v : d;
+
+/* Everything the renderer needs about one pitch. Every Statcast column below is read
+   if the pitch carries it and quietly defaulted if not, so dropping in real data from
+   build_pitches.py changes the animation without touching this file. */
+function physics(p){
+  const D = fx(p.pitch_type);
+  const arm = p.p_throws === "R" ? -1 : 1;        // arm side, in plate_x sign
+  const ext = num(p.release_extension, 6.4);      // feet in front of the rubber
+  const tSec = (60.5 - ext) / (Math.max(60, p.release_speed) * 1.467);
+
+  const pfxX = num(p.pfx_x, D.pfx_arm * arm);     // feet, catcher's perspective
+  const pfxZ = num(p.pfx_z, D.pfx_z);
+  /* A constant sideways acceleration sags a trajectory a*t^2/8 off its own chord,
+     and Statcast's pfx is about a*t^2/2 — so chord deviation is pfx/4, with gravity
+     subtracted on the vertical. Zero at both ends, which is why the ball still
+     arrives on its real plate_x / plate_z no matter how much it moves on the way. */
+  const dev = { x: BREAK_GAIN * pfxX/4,
+                z: BREAK_GAIN * (pfxZ/4 - G*tSec*tSec/8) };
+
+  /* release height and arm slot drive where the hand actually is on screen */
+  const relFtX = num(p.release_pos_x, 1.95*arm), relFtZ = num(p.release_pos_z, 5.8);
+  const rel = { x: CX + relFtX*MOUND_PPF, y: MOUND_GY - relFtZ*MOUND_PPF };
+
+  /* spin axis -> the two components you can see from behind the plate */
+  const axisDefault = arm === -1 ? D.axis : (360 - D.axis) % 360;
+  let tilt = 180 - num(p.spin_axis, axisDefault), dir = 1;
+  if (tilt >  90){ tilt -= 180; dir = -1; }
+  if (tilt < -90){ tilt += 180; dir = -1; }
+  const revs = num(p.release_spin_rate, D.rpm)/60 * tSec * SPIN_VIS;
+
+  return { arm, ext, tSec, dev, rel, tilt, revs, gyro: D.gyro,
+           tumbleRevs: revs*(1-D.gyro)*dir, gyroRevs: revs*D.gyro*arm,
+           relFtX, relFtZ, pfxX, pfxZ,
+           rpm: num(p.release_spin_rate, D.rpm),
+           slot: num(p.arm_angle, null),
+           durMs: Math.round(tSec * 2600) };
+}
+
+const TYPES = [
+  ["FF","4-Seam"],["SI","Sinker"],["FC","Cutter"],
+  ["SL","Slider"],["CU","Curveball"],["CH","Changeup"]
+];
+
+/* ---------------------------------------------------------------- geometry */
+const FT = 12, PLATE_HALF = 8.5, BALL_R = 1.45;
+
+const absZone = h => ({
+  left:-PLATE_HALF/FT, right:PLATE_HALF/FT,
+  bot:0.27*h/FT,       top:0.535*h/FT
+});
+const ruleZone = (b,t) => {
+  const e = (PLATE_HALF+BALL_R)/FT;
+  return { left:-e, right:e, bot:b-BALL_R/FT, top:t+BALL_R/FT };
+};
+/** inches from the zone boundary; positive = inside, negative = outside */
+function dist(px,pz,z){
+  const dx = Math.min(px-z.left, z.right-px);
+  const dz = Math.min(pz-z.bot,  z.top-pz);
+  if (dx>=0 && dz>=0) return Math.min(dx,dz)*FT;
+  return -Math.hypot(Math.max(0,-dx), Math.max(0,-dz))*FT;
+}
+const call = d => d>=0 ? "S" : "B";
+
+/* screen mapping: feet -> svg units */
+const PPF = 88, CX = 320, GY = 496;
+const X = ft => CX + ft*PPF;
+const Y = ft => GY - ft*PPF;
+
+/* ------------------------------------------------------------------ state */
+let i = 0, score = 0, absHits = 0, umpHits = 0, typeHits = 0;
+let phase = "ready", myCall = null, myType = null;
+let afterLand = () => askCall();
+let replays = 0;
+const log = [];
+
+const $ = id => document.getElementById(id);
+const svg = $("svg"), stage = $("stage"), prompt = $("prompt");
+const P = () => PITCHES[i];
+
+/* -------------------------------------------------------------- the scene */
+/* Batter landmarks as thousandths of his standing height, in a batting stance.
+   Two constraints fix everything else:
+     knee hollow 275                     == ABS bottom (270)
+     midpoint(shoulder 628, belt 442)    == ABS top   (535)
+   Torso length 186 = a real 200-unit torso leaning ~22 degrees toward the plate;
+   thigh and shin keep their real lengths and take up the slack by bending, which
+   is what a crouch actually is. Draw the man standing upright instead and the
+   zone lands 13 inches too low on him. */
+const STANCE = { knee:275, belt:442, shoulder:628, head:726, helmet:800 };
+
+function batterArt(){
+  const S = STANCE;
+  return `
+    <g fill="none" stroke="#03070b" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M-84 10 L-46 ${S.knee}" stroke-width="74"/>
+      <path d="M-46 ${S.knee} L-36 ${S.belt-18}" stroke-width="94"/>
+      <path d="M64 26 L80 ${S.knee+12}" stroke-width="74"/>
+      <path d="M80 ${S.knee+12} L34 ${S.belt-10}" stroke-width="94"/>
+    </g>
+    <g fill="#03070b" stroke="#03070b" stroke-linejoin="round">
+      <path d="M-56 ${S.belt-52} L46 ${S.belt-40} L88 ${S.shoulder-18}
+               L-14 ${S.shoulder+18} Z"/>
+      <path d="M22 ${S.shoulder-6} L54 ${S.head-52}" stroke-width="52"
+            stroke-linecap="round" fill="none"/>
+      <ellipse cx="50" cy="${S.head}" rx="48" ry="66"/>
+      <path d="M94 ${S.head+18} q46 -8 50 20 q-26 16 -56 4z"/>
+    </g>
+    <g fill="none" stroke="#03070b" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M86 ${S.shoulder-14} L14 ${S.shoulder-66} L-62 ${S.shoulder+22}" stroke-width="54"/>
+      <path d="M-8 ${S.shoulder+12} L-58 ${S.shoulder-62} L-66 ${S.shoulder+24}" stroke-width="50"/>
+    </g>
+    <path d="M-64 ${S.shoulder+30} L-196 ${S.shoulder+432}"
+          stroke="#6f5130" stroke-width="24" stroke-linecap="round" fill="none"/>
+    <path d="M-64 ${S.shoulder+30} L-84 ${S.shoulder-16}"
+          stroke="#120c06" stroke-width="30" stroke-linecap="round" fill="none"/>`;
+}
+
+/** the catcher's glove arm: a tapered, slightly bent limb from shoulder to wrist */
+function armPath(mx, my){
+  const ax = 274, ay = 536;                 // shoulder
+  const wx = mx - 3, wy = my + 18;          // wrist, just under the pocket
+  const ex = (ax + wx) / 2 - 18, ey = (ay + wy) / 2;   // elbow, kicked outward
+  return `M${ax-14} ${ay} Q${ex-10} ${ey} ${wx-7} ${wy}`
+       + ` L${wx+7} ${wy} Q${ex+10} ${ey} ${ax+14} ${ay} Z`;
+}
+function scene(p){
+  const az = absZone(p.batter_height_in);
+  const rz = ruleZone(p.sz_bot, p.sz_top);
+  const rhb = p.stand === "R";                 // RHB stands on the -plate_x side
+  const bx  = rhb ? CX-198 : CX+198;
+  const kb  = (p.batter_height_in/12) * PPF / 1000;   // 1000 units = his standing height
+  const s   = rhb ? 1 : -1;                    // mirror the batter
+  const tgt = { x: X(0), y: Y((az.top+az.bot)/2 - 0.18) };   // where the catcher sets up
+
+  svg.innerHTML = `
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#070d18"/><stop offset="1" stop-color="#16293f"/>
+    </linearGradient>
+    <linearGradient id="turf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#17492b"/><stop offset="1" stop-color="#0a2214"/>
+    </linearGradient>
+    <radialGradient id="dirt" cx="50%" cy="18%" r="78%">
+      <stop offset="0" stop-color="#5a422d"/><stop offset="1" stop-color="#31241a"/>
+    </radialGradient>
+    <linearGradient id="mittG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7d5230"/><stop offset="1" stop-color="#4c2f19"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#fff" stop-opacity=".85"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <g id="world">
+    <rect width="640" height="190" fill="url(#sky)"/>
+    <g opacity=".22" fill="#a9c8e8">
+      <rect x="56"  y="30" width="120" height="6" rx="3"/>
+      <rect x="464" y="24" width="120" height="6" rx="3"/>
+    </g>
+    <rect y="152" width="640" height="42" fill="#0b1a11"/>
+    <rect x="206" y="138" width="228" height="56" fill="#050e08"/>
+    <rect y="190" width="640" height="370" fill="url(#turf)"/>
+    <ellipse cx="320" cy="232" rx="42" ry="11" fill="#3d2c1e" opacity=".75"/>
+    <ellipse cx="320" cy="558" rx="316" ry="128" fill="url(#dirt)"/>
+
+    <!-- pitcher: grey road uniform so the limbs read, brown glove on the off hand,
+         bare throwing hand holding the ball until he lets it go -->
+    <g id="pitcher" stroke-linecap="round" stroke-linejoin="round">
+      <path id="pBack" fill="none" stroke="#4d5d6f" stroke-width="6.4"/>
+      <path id="pLead" fill="none" stroke="#5b6b7e" stroke-width="6.4"/>
+      <path id="pGloveArm" fill="none" stroke="#3f5065" stroke-width="4.6"/>
+      <g id="pGloveG">
+        <ellipse id="pGlove" rx="4.7" ry="4.2" fill="#57331a" stroke="#241407" stroke-width="1.3"/>
+        <path id="pGloveWeb" d="M-2.3 -3.0 L2.3 -3.0" stroke="#8a5b30" stroke-width="1.3" fill="none"/>
+      </g>
+      <path id="pTorso" fill="#4c5f76" stroke="#2b3846" stroke-width="1"/>
+      <circle id="pHead" r="6.4" fill="#8a6a52"/>
+      <path id="pCap" fill="#1d2733"/>
+      <path id="pArm" fill="none" stroke="#54687f" stroke-width="4.9"/>
+      <circle id="pHand" r="2.7" fill="#a8815f"/>
+    </g>
+
+    <!-- batter, drawn in stance proportions and scaled to HIS height, so the
+         zone lands knees-to-mid-torso the way the rulebook describes it -->
+    <g transform="translate(${bx} ${GY}) scale(${s*kb} ${-kb})">${batterArt()}</g>
+
+    <!-- home plate -->
+    <path d="M268 498 L372 498 L356 518 L284 518 Z" fill="#dfe7f0" opacity=".7"/>
+
+    <path id="arm" fill="#0a1119" d="${armPath(tgt.x, tgt.y)}"/>
+
+    <!-- catcher, seen over his shoulder -->
+    <g>
+      <path d="M172 560 q26 -66 148 -66 q122 0 148 66 z" fill="#080e15"/>
+      <path d="M172 560 q26 -66 148 -66 q122 0 148 66" fill="none"
+            stroke="#1a2634" stroke-width="1.5" opacity=".8"/>
+      <circle cx="320" cy="502" r="33" fill="#0a1119"/>
+      <path d="M290 492 q30 -17 60 0" fill="none" stroke="#1e2b3a" stroke-width="4"/>
+      <path d="M298 512 h44 M303 522 h34" stroke="#161f2b" stroke-width="3"/>
+    </g>
+  </g>
+
+  <!-- strike zones, revealed only after the call -->
+  <g id="zones" opacity="0">
+    <rect x="${X(rz.left)}" y="${Y(rz.top)}"
+          width="${(rz.right-rz.left)*PPF}" height="${(rz.top-rz.bot)*PPF}"
+          fill="none" stroke="var(--rule)" stroke-width="1.5"
+          stroke-dasharray="6 5" opacity=".7" rx="2"/>
+    <rect x="${X(az.left)}" y="${Y(az.top)}"
+          width="${(az.right-az.left)*PPF}" height="${(az.top-az.bot)*PPF}"
+          fill="rgba(34,211,238,.08)" stroke="var(--abs)" stroke-width="2" rx="2"/>
+    <line id="dline" stroke="#fff" stroke-width="1.5" opacity=".9"/>
+    <text id="dlabel" fill="#fff" font-size="13" font-weight="700"
+          text-anchor="middle" opacity=".95"></text>
+  </g>
+
+  <!-- catcher's mitt, set up at the target, forearm attached -->
+  <g id="mitt" transform="translate(${tgt.x} ${tgt.y}) scale(1)">
+    <g id="mittInner">
+      <path d="M-8 22 q-13 5 -19 -5 q-5 -11 5 -16" fill="#3a2415"/>
+      <ellipse cx="0" cy="0" rx="30" ry="32" fill="url(#mittG)"/>
+      <ellipse cx="0" cy="0" rx="30" ry="32" fill="none" stroke="#2b1a0e" stroke-width="3"/>
+      <ellipse cx="0" cy="3" rx="18" ry="19" fill="#40280f" opacity=".55"/>
+      <path d="M-29 -10 q12 -20 29 -20 q17 0 29 20" fill="none" stroke="#2b1a0e" stroke-width="3.5"/>
+      <path d="M-15 -27 q15 -8 30 0" fill="none" stroke="#a0713e" stroke-width="2.5" opacity=".6"/>
+      <path d="M0 -31 v-4 M-11 -28 l-3 -5 M11 -28 l3 -5" stroke="#2b1a0e" stroke-width="2.5"/>
+    </g>
+  </g>
+
+  <circle id="halo" cx="320" cy="212" r="0" fill="url(#glow)" opacity="0"/>
+
+  <!-- the ball, authored at its true radius (1.45in) and scaled down for distance -->
+  <g id="ball" opacity="0" transform="translate(320 190)">
+    <g id="ballScale">
+      <circle id="ballBody" r="10.6" fill="#f6f8fb"/>
+      <circle id="ballRing" r="10.6" fill="none" stroke="#b9c6d4" stroke-width=".9"/>
+      <g stroke="#b4242f" stroke-width="1.9" fill="none" stroke-linecap="round">
+        <path id="seam0"/><path id="seam1"/>
+      </g>
+      <circle id="spinDot" r="2.7" fill="#6b1418" opacity="0"/>
+    </g>
+  </g>`;
+
+  svg._target = tgt;
+  setPitcher(0, p.p_throws === "R" ? -1 : 1, physics(p).rel);
+  spinSeams(0, 0, 1);
+}
+
+/* -------------------------------------------------------------- the pitch */
+/* The delivery. hs is the throwing-arm side in screen terms: a right-handed
+   pitcher's arm is on our left, because we are facing him. */
+const MOUND = { hip:{x:320,y:216}, sh:{x:320,y:202}, rub:232 };
+
+/* The delivery. hs is the throwing-arm side in screen terms: a right-hander's arm is
+   on our left, because we are facing him. `rel` is where the hand must be at release,
+   which comes from release_pos_x / release_pos_z when the pitch carries them — so a
+   high slot and a low slot look different, straight from the data. */
+function setPitcher(u, hs, rel){
+  const sm = t => t*t*(3-2*t);
+  const lean = sm(Math.min(1,u)) * 4;
+  const S = { x: MOUND.sh.x + hs*4 + hs*lean*0.3, y: MOUND.sh.y + lean*0.4 };
+
+  /* where the arm is going: solve the release angle and reach from the target */
+  const T  = rel || { x: MOUND.sh.x + hs*14, y: MOUND.sh.y - 17 };
+  const dx = T.x - S.x, dy = T.y - S.y;
+  const rRel = Math.max(9, Math.hypot(dx, dy));
+  const aRel = Math.atan2(hs*dx, -dy) * 180/Math.PI;
+
+  /* the arm lags, then whips — still accelerating when the ball leaves, which is
+     what makes the release read as a release */
+  const w = u <= 1
+    ? (u < 0.5 ? 0.20*sm(u/0.5) : 0.20 + 0.80*Math.pow((u-0.5)/0.5, 1.8))
+    : 1 + Math.min(1,(u-1)/0.45);
+  const a = u <= 1 ? 168 + (aRel-168)*w : aRel + (aRel-118)*Math.min(1,(u-1)/0.45);
+  const R = Math.PI/180, len = 20 + (rRel-20)*Math.min(1,w);
+  const hand = { x: S.x + Math.sin(a*R)*hs*len, y: S.y - Math.cos(a*R)*len };
+
+  /* two-bone elbow: partway along, kicked out to the arm side */
+  const ux = hand.x-S.x, uy = hand.y-S.y, ul = Math.hypot(ux,uy) || 1;
+  const elbow = { x: S.x + ux*0.55 - (uy/ul)*ul*0.17*hs,
+                  y: S.y + uy*0.55 + (ux/ul)*ul*0.17*hs };
+  $("pArm").setAttribute("d", `M${S.x} ${S.y} L${elbow.x} ${elbow.y} L${hand.x} ${hand.y}`);
+  $("pHand").setAttribute("cx", hand.x); $("pHand").setAttribute("cy", hand.y);
+
+  /* glove side: reaches out front toward the target, then tucks in as he finishes */
+  const gu = Math.min(1, u), GS = { x: MOUND.sh.x - hs*4, y: MOUND.sh.y + 1 };
+  const gx = GS.x - hs*(18 - 9*sm(gu)), gy = GS.y - 9 + 22*sm(gu);
+  $("pGloveArm").setAttribute("d",
+    `M${GS.x} ${GS.y} L${(GS.x+gx)/2 - hs*3} ${(GS.y+gy)/2 - 2} L${gx} ${gy}`);
+  $("pGloveG").setAttribute("transform", `translate(${gx} ${gy}) rotate(${hs*(18-40*sm(gu))})`);
+
+  /* lead leg lifts then strides; back leg drags up behind after release */
+  const lift = Math.min(1, u/0.35), str = Math.max(0, Math.min(1,(u-0.35)/0.55));
+  const lk = { x: MOUND.hip.x - hs*(6 + 6*sm(str)), y: 224 - 9*sm(lift) + 7*sm(str) };
+  const lf = { x: MOUND.hip.x - hs*(8 + 11*sm(str)), y: 232 - 15*sm(lift) + 18*sm(str) };
+  $("pLead").setAttribute("d", `M${MOUND.hip.x} ${MOUND.hip.y} L${lk.x} ${lk.y} L${lf.x} ${lf.y}`);
+
+  const fu = Math.max(0, Math.min(1,(u-0.85)/0.6));
+  $("pBack").setAttribute("d",
+    `M${MOUND.hip.x} ${MOUND.hip.y} L${MOUND.hip.x + hs*(3+7*fu)} ${224 - 5*fu}`
+    + ` L${MOUND.hip.x + hs*(5+15*fu)} ${MOUND.rub - 13*fu}`);
+
+  $("pTorso").setAttribute("d",
+    `M${313.5+lean*hs*0.4} ${200+lean*0.5} q6.5 -4.5 13 0 l${3-lean*0.3} ${20-lean*0.6} q-9.5 4 -19 0z`);
+  const hx = 320 + hs*lean*0.7, hy = 193 + lean*0.7;
+  $("pHead").setAttribute("cx", hx); $("pHead").setAttribute("cy", hy);
+  $("pCap").setAttribute("d",
+    `M${hx-6.5} ${hy-1.2} a6.5 6.5 0 0 1 13 0 z`
+    + ` M${hx-7.6} ${hy-1.6} q7.6 5.4 15.2 0 q-7.6 1.6 -15.2 0 z`);
+  return hand;
+}
+
+function throwPitch(){
+  if (phase !== "ready") return;
+  phase = "windup";
+  prompt.textContent = "";
+  stage.innerHTML = "";
+  const p = P(), F = physics(p), hs = p.p_throws === "R" ? -1 : 1;
+  const ball = $("ball"), scale = $("ballScale");
+
+  /* The ball is in his hand from the first frame and never teleports: the windup
+     carries it, and the flight picks it up from exactly where the hand let go. */
+  ball.setAttribute("opacity","1");
+  $("spinDot").setAttribute("opacity","0");
+
+  const t0 = performance.now(), WIND = 640;
+  (function step(now){
+    const u = Math.min(1, (now-t0)/WIND);
+    const hand = setPitcher(u, hs, F.rel);
+    ball.setAttribute("transform", `translate(${hand.x} ${hand.y})`);
+    scale.setAttribute("transform", `scale(${1.9/10.6})`);
+    spinSeams(u*140*F.tumbleRevs, F.tilt, 1);        // turning it over in his fingers
+    if (u < 1) requestAnimationFrame(step); else flight(hs, F);
+  })(performance.now());
+}
+
+function flight(hs, F){
+  phase = "flight";
+  const p = P();
+  const sx = F.rel.x, sy = F.rel.y;                 // exactly where the hand just was
+  const tx = X(p.plate_x), ty = Y(p.plate_z);
+  const scale = $("ballScale"), ball = $("ball"), halo = $("halo"), dot = $("spinDot");
+
+  /* The gyro dot sits on the spin axis and does NOT turn with the ball — which is
+     exactly why hitters can pick a slider out of the hand by looking for it. */
+  if (F.gyro > 0.4){
+    dot.setAttribute("cx", 4.1*Math.sin(F.tilt*Math.PI/180));
+    dot.setAttribute("cy",-4.1*Math.cos(F.tilt*Math.PI/180));
+    dot.setAttribute("opacity",".85");
+  }
+  halo.setAttribute("opacity",".45");
+
+  const t0 = performance.now();
+  (function step(now){
+    const u = Math.min(1, (now-t0)/F.durMs);
+    const e = u*u*u;                                  // it gets close in a hurry
+    const r = 1.9 + 8.7*e;
+    const bend = 4*u*(1-u) * (0.45 + 0.55*e) * PPF;   // zero at both ends
+    const x = sx + (tx-sx)*e + F.dev.x*bend;
+    const y = sy + (ty-sy)*e - F.dev.z*bend;
+
+    ball.setAttribute("transform", `translate(${x} ${y})`);
+    scale.setAttribute("transform", `scale(${r/10.6})`);
+    halo.setAttribute("cx",x); halo.setAttribute("cy",y); halo.setAttribute("r",r*2.4);
+
+    const phi = F.tumbleRevs * 2*Math.PI * u;
+    spinSeams(F.gyroRevs*360*u, F.tilt, Math.max(0.05, Math.abs(Math.cos(phi))));
+
+    /* the catcher holds his target, then adjusts late to where it is really going */
+    const t = svg._target, m = Math.max(0,(u-0.5)/0.5), me = m*m*(3-2*m);
+    const mx = t.x + (x-t.x)*me, my = t.y + (y+12-t.y)*me;
+    $("mitt").setAttribute("transform",`translate(${mx} ${my}) scale(${1+0.08*me})`);
+    $("arm").setAttribute("d", armPath(mx,my));
+
+    if (u < 0.55) setPitcher(1 + u/0.55*0.45, hs, F.rel);   // follow-through carries on
+
+    if (u < 1) requestAnimationFrame(step); else land();
+  })(performance.now());
+}
+
+function land(){
+  const p = P(), az = absZone(p.batter_height_in);
+  const zx = X((az.left+az.right)/2), zy = Y((az.top+az.bot)/2);
+  const bx = X(p.plate_x), by = Y(p.plate_z);
+  const mitt = $("mitt"), inner = $("mittInner");
+
+  /* the framing tug: a short pull back toward the middle of the zone */
+  const t0 = performance.now(), TUG = 260;
+  (function frame(now){
+    const u = Math.min(1,(now-t0)/TUG), e = 1-Math.pow(1-u,3);
+    const fx2 = bx + (zx-bx)*0.32*e, fy = by+12 + (zy-(by+12))*0.32*e;
+    mitt.setAttribute("transform",`translate(${fx2} ${fy}) scale(1.08)`);
+    inner.setAttribute("transform",`rotate(${-12*e})`);
+    $("arm").setAttribute("d", armPath(fx2,fy));
+    if (u<1) requestAnimationFrame(frame); else afterLand();
+  })(performance.now());
+}
+
+/* ----------------------------------------------------------- call / bonus */
+function askCall(){
+  phase = "call";
+  prompt.innerHTML = `Your call.${replays ? ` &middot; <span style="color:var(--dim)">`
+    + `${replays} look${replays===1?'':'s'} used</span>` : ``}`;
+  stage.innerHTML = `
+    <div class="calls">
+      <button class="btn-ball"   onclick="makeCall('B')"><b>BALL</b><small>press B</small></button>
+      <button class="btn-strike" onclick="makeCall('S')"><b>STRIKE</b><small>press S</small></button>
+    </div>
+    <div style="text-align:center;margin-top:10px">
+      <button class="ghost" onclick="replay()">&#8635; See it again <small
+        style="display:inline;color:var(--dim)">press R</small></button>
+    </div>`;
+}
+
+function makeCall(c){
+  if (phase !== "call") return;
+  myCall = c; phase = "type";
+  prompt.textContent = "Bonus — what was the pitch?";
+  stage.innerHTML = `
+    <div class="types">
+      ${TYPES.map(([k,n])=>`<button id="t_${k}" onclick="pickType('${k}')">${n}</button>`).join("")}
+    </div>
+    <div style="text-align:center;margin-top:10px">
+      <button class="ghost" onclick="pickType(null)">Skip the bonus &rarr;</button>
+    </div>`;
+}
+
+function pickType(t){
+  if (phase !== "type") return;
+  myType = t; phase = "reveal";
+  reveal(true);
+}
+
+/* ----------------------------------------------------------- the reveal  */
+function reveal(rescore){
+  const p  = P(), F = physics(p);
+  const az = absZone(p.batter_height_in), rz = ruleZone(p.sz_bot, p.sz_top);
+  const dA = dist(p.plate_x, p.plate_z, az);
+  const dR = dist(p.plate_x, p.plate_z, rz);
+  const absCall = call(dA), umpCall = p.ump_call;
+
+  const okAbs  = myCall === absCall;
+  const okUmp  = myCall === umpCall;
+  const okType = myType === p.pitch_type;
+  const gained = (okAbs?10:0) + (okUmp?5:0) + (okType?5:0);
+  if (rescore){
+    score += gained; absHits += okAbs; umpHits += okUmp; typeHits += okType;
+    log.push({okAbs, okUmp, agree: absCall === umpCall});
+  }
+
+  /* dim the world, bring up the zones and the ball's resting spot */
+  $("world").setAttribute("opacity",".28");
+  $("mitt").setAttribute("opacity",".22");
+  $("zones").setAttribute("opacity","1");
+  $("halo").setAttribute("opacity","0");
+  $("ballScale").setAttribute("transform","scale(1)");
+  const ring = $("ballRing");
+  ring.setAttribute("stroke", dA>=0 ? "var(--strike)" : "var(--ball)");
+  ring.setAttribute("stroke-width","3.2");
+
+  /* the shortest line from the ball to the ABS boundary — "how close was it" */
+  const cx = Math.max(az.left, Math.min(az.right, p.plate_x));
+  const cz = Math.max(az.bot,  Math.min(az.top,   p.plate_z));
+  const ex = dA>=0 ? nearestEdgeX(p, az) : {x:cx, z:cz};
+  const dl = $("dline");
+  dl.setAttribute("x1", X(p.plate_x)); dl.setAttribute("y1", Y(p.plate_z));
+  dl.setAttribute("x2", X(ex.x));      dl.setAttribute("y2", Y(ex.z));
+  const lbl = $("dlabel");
+  lbl.textContent = Math.abs(dA).toFixed(1) + '"';
+  lbl.setAttribute("x", X(p.plate_x) + (p.plate_x >= 0 ? 34 : -34));
+  lbl.setAttribute("y", Y(p.plate_z) - 18);
+
+  const inches = Math.abs(dA).toFixed(1);
+  const where  = dA>=0 ? "inside the zone" : "off the zone";
+  const tight  = Math.abs(dA) <= 1.5;
+
+  const vRow = (who, c, ok, note) => `
+    <div class="v ${ok?'ok':'no'}">
+      <span class="who">${who}</span>
+      <span class="call" style="color:${c==='S'?'var(--strike)':'var(--ball)'}">${c==='S'?'STRIKE':'BALL'}</span>
+      <span class="pill ${ok?'ok':'no'}">${ok?'YOU AGREED':'YOU DIDN&rsquo;T'}</span>
+      <span class="note">${note}</span>
+    </div>`;
+
+  const pos = Math.max(0, Math.min(100, 50 + (dA/8)*50));   // ±8in maps across the meter
+
+  stage.innerHTML = `
+  <div class="card">
+    <div class="verdicts">
+      <div class="v" style="border-color:#33445c">
+        <span class="who">Your call</span>
+        <span class="call" style="color:${myCall==='S'?'var(--strike)':'var(--ball)'}">${myCall==='S'?'STRIKE':'BALL'}</span>
+        <span class="note">+${gained} pts</span>
+      </div>
+      ${vRow("ABS called it", absCall, okAbs,
+        `${inches}&Prime; ${where} &middot; ${tight?'borderline':'clear'}`)}
+      ${vRow("The umpire called it", umpCall, okUmp,
+        absCall===umpCall
+          ? "the ump and the machine agreed"
+          : `<b style="color:var(--warn)">the ump and the machine split &mdash; he had it ${umpCall==='S'?'a strike':'a ball'}</b>`)}
+    </div>
+
+    <div class="close">
+      <div class="lab"><span>${inches}&Prime; ${dA>=0?'inside':'outside'} the ABS edge</span>
+        <span>${Math.abs(dR).toFixed(1)}&Prime; ${dR>=0?'inside':'outside'} rulebook</span></div>
+      <div class="meter"><i></i>
+        <u style="left:${pos}%;background:${dA>=0?'var(--strike)':'var(--ball)'}"></u></div>
+    </div>
+
+    <div class="ctx">
+      <h3>${p.game}</h3>
+      <div class="sub">${p.venue} &middot; ${p.half} ${ord(p.inning)}, ${p.outs} out${p.outs===1?'':'s'}
+        &middot; ${p.away_score}&ndash;${p.home_score}</div>
+      <div class="grid">
+        <div><small>Batting</small><b>${p.batter}</b><small>bats ${p.stand}</small></div>
+        <div><small>Pitching</small><b>${p.pitcher}</b><small>${p.p_throws}HP</small></div>
+        <div><small>Count</small><b>${p.balls}&ndash;${p.strikes}</b></div>
+        <div><small>Pitch of AB</small><b>#${p.pitch_of_ab}</b></div>
+        <div><small>Pitch</small><b>${p.pitch_name}${okType?' ✓':''}</b></div>
+        <div><small>Velo</small><b>${p.release_speed} mph</b></div>
+        <div><small>Spin</small><b>${F.rpm.toLocaleString()} rpm</b></div>
+        <div><small>Movement</small><b>${moveText(F)}</b><small>pitcher&rsquo;s POV</small></div>
+        <div><small>Release</small><b>${F.relFtZ.toFixed(1)} ft</b><small>${
+          F.slot == null ? `${F.relFtX.toFixed(1)} ft off centre` : `${F.slot.toFixed(0)}&deg; arm slot`}</small></div>
+      </div>
+      <div class="result">
+        <small>How the at-bat ended</small>
+        <b>${p.ab_result}</b>
+        <p>${p.ab_des}</p>
+      </div>
+      ${savantLink(p)}
+      ${myType ? `<p class="foot" style="margin-top:10px">You guessed
+        <b>${TYPES.find(t=>t[0]===myType)[1]}</b> —
+        ${okType?'<span style="color:var(--good)">correct, +5</span>'
+                :'<span style="color:var(--bad)">it was a '+p.pitch_name+'</span>'}.</p>` : ``}
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr auto;gap:10px;margin-top:12px">
+    <button onclick="next()">${i===PITCHES.length-1?'See your card':'Next pitch'} &rarr;</button>
+    <button class="ghost" onclick="replay()">&#8635; Replay</button>
+  </div>`;
+
+  prompt.textContent = "";
+  hud();
+}
+
+/* Movement, stated from the pitcher's point of view — arm side and glove side are
+   his. From where the batter stands both of those read the other way round. */
+function moveText(F){
+  const h = Math.abs(F.pfxX*12), v = F.pfxZ*12;
+  const side = F.pfxX * F.arm > 0 ? "arm-side" : "glove-side";
+  return `${h.toFixed(0)}&Prime; ${side} &middot; ${Math.abs(v).toFixed(0)}&Prime; ${v>=0?"ride":"drop"}`;
+}
+
+/* Baseball Savant deep links. play_id is a per-pitch UUID that Savant's video player
+   takes directly; it does not ship in the Statcast CSV, so build_pitches.py --with-video
+   pulls it from MLB's live game feed and joins it on (game_pk, at_bat, pitch_number). */
+function savantLink(p){
+  if (p.play_id) return `<a class="savant" target="_blank" rel="noopener"
+      href="https://baseballsavant.mlb.com/sporty-videos?playId=${p.play_id}"
+      >&#9654; Watch this exact pitch on Baseball Savant</a>`;
+  if (p.game_pk) return `<a class="savant" target="_blank" rel="noopener"
+      href="https://baseballsavant.mlb.com/gamefeed?gamePk=${p.game_pk}"
+      >Open this game on Baseball Savant</a>`;
+  return `<span class="savant off">No Savant link on sample pitches. Real data carries
+      <code>game_pk</code> for the game feed, and <code>build_pitches.py --with-video</code>
+      adds a per-pitch <code>play_id</code> that links straight to the video of this pitch.</span>`;
+}
+
+function nearestEdgeX(p, az){
+  /* for a strike, point at whichever boundary it came closest to */
+  const opts = [
+    {x:az.left,  z:p.plate_z, d:p.plate_x-az.left},
+    {x:az.right, z:p.plate_z, d:az.right-p.plate_x},
+    {x:p.plate_x,z:az.bot,    d:p.plate_z-az.bot},
+    {x:p.plate_x,z:az.top,    d:az.top-p.plate_z}
+  ];
+  return opts.sort((a,b)=>a.d-b.d)[0];
+}
+
+const ord = n => { const s=["th","st","nd","rd"], v=n%100;
+  return n + (s[(v-20)%10] || s[v] || s[0]); };
+
+function replay(){
+  if (phase !== "call" && phase !== "reveal") return;
+  const from = phase;
+  replays++;
+  scene(P());
+  afterLand = from === "reveal"
+    ? () => { phase = "reveal"; reveal(false); }
+    : () => askCall();
+  phase = "ready";
+  throwPitch();
+}
+
+function next(){
+  if (i === PITCHES.length-1) return summary();
+  i++; myCall = myType = null; phase = "ready"; replays = 0;
+  afterLand = () => askCall();
+  scene(P()); hud();
+  prompt.innerHTML = "Tap anywhere or press <b>Space</b> for the next pitch.";
+  stage.innerHTML = "";
+}
+
+function hud(){
+  $("hudPitch").innerHTML = `${i+1}<small style="display:inline;font-size:12px;color:var(--dim)">/10</small>`;
+  $("hudScore").textContent = score;
+  $("hudAbs").textContent = absHits;
+  $("hudUmp").textContent = umpHits;
+}
+
+/* ------------------------------------------------------------- summary  */
+function summary(){
+  phase = "done";
+  const squares = log.map(r =>
+      r.okAbs && r.okUmp ? "🟩" : (r.okAbs || r.okUmp) ? "🟨" : "⬛").join("");
+  const splits = log.filter(r => !r.agree);
+  const tookAbs = splits.filter(r => r.okAbs).length;
+
+  $("world").setAttribute("opacity",".18");
+  prompt.textContent = "";
+  stage.innerHTML = `
+  <div class="card">
+    <h3 style="margin:0 0 2px;font-size:17px">${score} / 200</h3>
+    <div class="sub" style="color:var(--muted);font-size:12px;margin-bottom:14px">
+      ${absHits}/10 matched the ABS zone &middot; ${umpHits}/10 matched the umpire
+      &middot; ${typeHits}/10 pitch types</div>
+    <div class="share">${squares}</div>
+    <p class="legend">🟩 both agreed with you &nbsp; 🟨 one did &nbsp; ⬛ neither</p>
+    <div class="ctx">
+      <div class="result">
+        <small>When the umpire and the machine split</small>
+        <b>${splits.length} pitch${splits.length===1?'':'es'} — you sided with ABS on ${tookAbs}</b>
+        <p>${splits.length===0 ? "They never disagreed today."
+          : tookAbs > splits.length/2
+            ? "You call the zone the way the robot does. In a challenge-system game you'd be winning arguments."
+            : "You call it the way the human behind the plate does — framing and all."}</p>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+      <button onclick="copyCard(this)">Copy share card</button>
+      <button class="ghost" onclick="location.reload()">Play again</button>
+    </div>
+  </div>`;
+  window._card = `BALLDLE — ${score}/200\n${squares}\nABS ${absHits}/10 · Ump ${umpHits}/10`;
+}
+
+function copyCard(btn){
+  navigator.clipboard?.writeText(window._card);
+  btn.textContent = "Copied";
+}
+
+/* ---------------------------------------------------------------- input  */
+document.addEventListener("keydown", e => {
+  const k = e.key.toLowerCase();
+  if (k === " " && phase === "ready") { e.preventDefault(); throwPitch(); }
+  else if (k === "b" && phase === "call") makeCall("B");
+  else if (k === "s" && phase === "call") makeCall("S");
+  else if (k === "r" && (phase === "call" || phase === "reveal")) replay();
+  else if (k === "enter" && phase === "reveal") next();
+});
+document.querySelector(".scene").addEventListener("click", () => {
+  if (phase === "ready") throwPitch();
+});
+
+/* -------------------------------------------------------------- kick off */
+scene(P()); hud();
+</script>
+</body>
+</html>

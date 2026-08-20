@@ -1,0 +1,10 @@
+# scripts/build_pitches.py — pulls real Statcast pitches
+pybaseball>=2.2.7
+pandas>=2.0
+
+# optional: exact batter heights for the ABS zone.
+# Without it, height is estimated from the Statcast zone (close, not exact).
+MLB-StatsAPI>=1.7
+
+# optional: --with-video, which attaches a per-pitch play_id for Savant links
+requests>=2.31

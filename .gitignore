@@ -1,0 +1,9 @@
+node_modules/
+dist/
+tests/__screens__/
+__pycache__/
+*.pyc
+.venv/
+venv/
+.DS_Store
+__out.json
