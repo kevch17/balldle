@@ -1,0 +1,40 @@
+# Rename to daily-puzzle.yml to turn on. Regenerates the day's pitches from real
+# Statcast data and commits them, which makes Pages redeploy.
+#
+# Read the spoiler warning in README first: this commits the answer key to a public
+# repo. It is fine while the game is yours to test and wrong once anyone is playing
+# for a streak.
+name: daily puzzle
+
+on:
+  schedule:
+    - cron: '15 9 * * *'      # 09:15 UTC
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install -r requirements.txt
+      - name: pull a fresh set
+        run: |
+          END=$(date -u -d '2 days ago' +%F)
+          START=$(date -u -d '16 days ago' +%F)
+          for TIER in easy medium hard; do
+            python3 scripts/build_pitches.py \
+              --start "$START" --end "$END" --tier "$TIER" \
+              --seed "$(date -u +%Y%m%d)" --with-video \
+              --out "data/$TIER.json"
+          done
+          cp data/medium.json data/pitches.json
+      - name: commit
+        run: |
+          git config user.name  "balldle-bot"
+          git config user.email "balldle-bot@users.noreply.github.com"
+          git add data/
+          git diff --staged --quiet || git commit -m "puzzle for $(date -u +%F)"
+          git push
