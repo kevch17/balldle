@@ -45,6 +45,7 @@ scripts/build_pitches.py  the real pipeline: Statcast -> pitches.json
 scripts/gen_sample.py     regenerates the placeholder set
 tests/                    geometry, break, release, alignment, full playthrough
 docs/DECISIONS.md         why everything is the way it is — read this one
+CHANGELOG.md              what changed in each version
 ```
 
 The template is deliberately one file. It is a prototype whose job is to be thrown

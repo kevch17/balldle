@@ -1,6 +1,6 @@
 {
   "name": "balldle",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "A daily ball/strike calling game built on real Statcast pitches — prototype",
   "type": "module",
