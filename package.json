@@ -2,11 +2,12 @@
   "name": "balldle",
   "version": "0.3.1",
   "private": true,
-  "description": "A daily ball/strike calling game built on real Statcast pitches — prototype",
+  "description": "A daily ball/strike calling game built on real Statcast pitches \u2014 prototype",
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
     "serve": "npm run build && python3 -m http.server 8080 --directory dist",
+    "dev": "node scripts/dev-server.mjs",
     "test": "npm run build && npm run test:geometry && npm run test:break && npm run test:release && npm run test:alignment && npm run test:play",
     "test:geometry": "node tests/geometry.test.mjs",
     "test:break": "node tests/break.test.mjs",
@@ -19,5 +20,7 @@
   "devDependencies": {
     "playwright": "^1.47.0"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  }
 }

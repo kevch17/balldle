@@ -102,10 +102,20 @@
   .legend{font-size:11px;color:var(--dim);text-align:center;margin-top:8px}
   .foot{font-size:11px;color:var(--dim);margin-top:18px;line-height:1.7}
   .hidden{display:none}
+  .devbar{position:fixed;top:8px;right:8px;z-index:50;display:flex;gap:8px;align-items:center;
+    background:#111;border:1px solid #333;border-radius:8px;padding:6px 10px;font-size:12px;color:#ccc}
+  .devbar button{font:inherit;cursor:pointer;background:#222;color:#eee;border:1px solid #444;
+    border-radius:6px;padding:4px 8px}
+  .devbar button:disabled{opacity:.5;cursor:default}
 </style>
 </head>
 <body>
 <div class="wrap">
+
+  <div class="devbar hidden" id="devBar">
+    <span id="devStatus">dev mode</span>
+    <button id="devNewGameBtn" onclick="devNewGame()">&#9851; New game (real Statcast)</button>
+  </div>
 
   <header>
     <h1>BALL<span>DLE</span></h1>
@@ -139,6 +149,36 @@
 <script>
 /* ------------------------------------------------------------------ data -- */
 const PITCHES = __PITCHES__;
+
+/* --- dev mode: local-only "New game (real Statcast)" button ------------------
+   Only visible when this page is served by scripts/dev-server.mjs (localhost) or
+   loaded with ?dev in the URL. Hitting the button calls POST /api/new-game, which
+   runs build_pitches.py against real Baseball Savant data server-side with a
+   random date window, rebuilds this page, and reloads it. This is a no-op against
+   the deployed static site on GitHub Pages — there is no server there to answer
+   the request, so the button simply never appears. */
+const DEV_MODE = location.hostname === "localhost" || location.hostname === "127.0.0.1"
+  || new URLSearchParams(location.search).has("dev");
+if (DEV_MODE) {
+  document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("devBar").classList.remove("hidden");
+  });
+}
+async function devNewGame(){
+  const btn = document.getElementById("devNewGameBtn"), status = document.getElementById("devStatus");
+  btn.disabled = true;
+  status.textContent = "pulling from Statcast\u2026 (can take 10\u201360s)";
+  try {
+    const r = await fetch("/api/new-game", { method: "POST" });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || "unknown error");
+    status.textContent = "reloading\u2026";
+    location.reload();
+  } catch (err) {
+    status.textContent = "failed: " + err.message;
+    btn.disabled = false;
+  }
+}
 
 /* Per-pitch-type defaults, used ONLY when the real Statcast column is absent.
    These are in Statcast's own conventions, quoted for a right-hander:

@@ -14,6 +14,36 @@ values in the `PITCHES` array, identical on every load. The only randomness in t
 whole system lives in `build_pitches.py`'s sampling, and it is seeded (by date, by
 default) precisely so every player gets the same puzzle, Wordle-style.
 
+## v0.4 — Real infrastructure: GitHub, daily cron, a dev button
+
+**The repo is finally on GitHub.** Everything up to v0.3.1 existed only as a local
+checkout. Getting it pushed surfaced a real constraint worth recording: file-bridge
+tools that mount a machine's folders read/write can still be unable to *delete*
+anything on that mount, and git's own commit process needs to delete its own lock
+files as a normal part of committing — not just recover from a crash. When that
+delete is blocked, git fails with a "stale lock" error that looks identical to an
+actual orphaned lock from a crashed process, which is a trap: retrying the delete
+through the same restricted channel never works, no matter how many times the
+message says to. The fix was running the remaining git commands in a real local
+terminal instead of through the bridge, where delete is unrestricted.
+
+**The daily workflow is switched on**, not just present. `daily-puzzle.yml.example`
+existed since v0.3.1 but was inert. It's now `daily-puzzle.yml`, live on a
+`09:15 UTC` cron and on `workflow_dispatch`. First live run against Baseball Savant
+is still unverified — see "the data is fake" below, which is still true.
+
+**Dev mode exists because there was no fast loop for real data.** `build_pitches.py`
+works but pulling live Statcast, rebuilding, and refreshing by hand is slow enough
+that it discourages actually doing it. `scripts/dev-server.mjs` (`npm run dev`) is a
+small local-only Node server that does the pull/build/reload on a button click inside
+the page itself, gated to `localhost`/`?dev` so it's invisible on the deployed static
+site — there's no server on GitHub Pages to answer `/api/new-game`, so the button
+just doesn't render there. It picks a random ~4-day window from within a real
+regular season (Apr 1 – Sep 20, a past year) rather than any random calendar date,
+specifically to avoid landing in the off-season and pulling zero games. Each click is
+a real network round-trip to Baseball Savant, so it's minutes-slow by design, not
+instant — that's the actual cost of "real," not a bug to fix.
+
 ## v0.3 — Statcast wiring, and a pitcher you can read
 
 **The glove is now obvious.** The pitcher wears a grey road uniform instead of being

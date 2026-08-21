@@ -5,6 +5,21 @@ Newest first. One line per change — if an entry needs a paragraph, it belongs 
 
 ---
 
+## 0.4.0 — Live on GitHub, dev-mode Statcast button · 21 Aug 2026
+
+**Shipped**
+- Repo pushed to GitHub for the first time (`github.com/kevch17/balldle`), force-pushed over GitHub's auto-generated initial commit since that was the only thing there.
+- `daily-puzzle.yml` switched on (renamed from `.example`) — GitHub Actions now regenerates `data/pitches.json` from real Statcast on a `09:15 UTC` cron, and can also be triggered manually from the Actions tab.
+
+**Added**
+- Dev mode: a "New game (real Statcast)" button, visible only on `localhost` or with `?dev` in the URL, backed by a new local-only server (`scripts/dev-server.mjs`, run with `npm run dev`). Each click pulls a random ~4-day window from a real MLB season, runs `build_pitches.py` against it with a random tier, rebuilds, and reloads — real pitches on demand instead of waiting on the daily cron.
+- `npm run dev` script.
+
+**Still true**
+- The pitches that ship in `data/pitches.json` are still the sample/fictional set (`sample: true`). Nobody has successfully run the real pipeline against live Statcast yet — the daily workflow and the new dev button are both wired up but untested end to end pending a real run.
+
+---
+
 ## 0.3.1 — Packaged as a repo · 20 Aug 2026
 
 **Structure**

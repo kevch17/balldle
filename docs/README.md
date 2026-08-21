@@ -84,7 +84,25 @@ The script has never run against the live API — it was written where Baseball 
 was unreachable. Its logic is covered by `tests/test_pipeline.py` against a synthetic
 Statcast frame, so expect to fix a column name or two on the first real run.
 
+## Dev mode
+
+The real pipeline above is slow to iterate against by hand — pull, rebuild, refresh,
+repeat. `npm run dev` wraps that loop in a button:
+
+```bash
+pip install -r requirements.txt
+npm run dev
+```
+
+Open `http://localhost:8080` and a small "⟳ New game (real Statcast)" control shows up
+in the corner (only on `localhost`, or with `?dev` in the URL — it never appears on the
+deployed static site, since there's no server there to answer it). Each click asks
+`scripts/dev-server.mjs` to pick a random ~4-day window from a real MLB season and a
+random difficulty tier, run `build_pitches.py` against it, rebuild, and reload — a
+fresh real 10-pitch set in 10–60 seconds, no waiting on the daily cron.
+
 ## The two zones
+
 
 The game draws both, because the gap between them is the whole point.
 
@@ -147,8 +165,9 @@ First run needs `npx playwright install chromium`.
 `main`. Turn Pages on in repo settings with source "GitHub Actions" and it works with
 no further setup. `ci.yml` runs the suites on every push and PR.
 
-`.github/workflows/daily-puzzle.yml.example` regenerates the day's pitches from real
-Statcast on a cron and commits them. Rename it to switch it on — after reading this:
+`.github/workflows/daily-puzzle.yml` regenerates the day's pitches from real Statcast
+on a `09:15 UTC` cron and commits them (also runnable on demand via `workflow_dispatch`
+in the Actions tab). It's switched on as of v0.4.0 — after reading this:
 
 ## Before this is a real daily game
 
